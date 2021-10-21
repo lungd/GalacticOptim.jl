@@ -32,12 +32,18 @@ function __solve(prob::OptimizationProblem, opt::Flux.Optimise.AbstractOptimiser
         elseif cb_call
           break
         end
-        msg = @sprintf("loss: %.3g", x[1])
+        loss = x[1]
+        msg = @sprintf("loss: %.3g", loss)
         progress && ProgressLogging.@logprogress msg i/maxiters
-        Flux.update!(opt, θ, G)
+        
+        if (loss == Inf || loss === NaN)
+          Flux.skip!()
+        else
+          Flux.update!(opt, θ, G)
+        end
 
         if save_best
-          if first(x) < first(min_err)  #found a better solution
+          if loss < first(min_err)  #found a better solution
             min_opt = opt
             min_err = x
             min_θ = copy(θ)
@@ -54,6 +60,6 @@ function __solve(prob::OptimizationProblem, opt::Flux.Optimise.AbstractOptimiser
 
     t1 = time()
 
-    SciMLBase.build_solution(prob, opt, θ, x[1])
+    SciMLBase.build_solution(prob, opt, θ, loss)
     # here should be build_solution to create the output message
 end
